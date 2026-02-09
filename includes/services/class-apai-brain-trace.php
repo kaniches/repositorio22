@@ -218,6 +218,102 @@ class APAI_Brain_Trace {
         }
     }
 
+
+    /**
+     * Return the full persisted trace log as lines (best-effort).
+     *
+     * @param int $max_lines Hard cap of lines returned from the end of the file.
+     * @return array{ok:bool, file:string, lines:array, meta:array, error?:string}
+     */
+    public static function full_trace_log_lines( $max_lines = 10000 ) {
+        $max_lines = max( 1, (int) $max_lines );
+        $max_lines = min( 200000, $max_lines );
+
+        $meta = array(
+            'mode' => 'tail_lines',
+            'max_lines' => $max_lines,
+            'truncated' => false,
+            'file_size' => 0,
+            'lines_found' => 0,
+            'bytes_read' => 0,
+        );
+
+        try {
+            list( $dir, $file ) = self::log_path();
+            if ( $file === '' ) {
+                return array( 'ok' => true, 'file' => '', 'lines' => array(), 'meta' => array_merge( $meta, array( 'warning' => 'path_unavailable' ) ) );
+            }
+            if ( ! file_exists( $file ) ) {
+                return array( 'ok' => true, 'file' => $file, 'lines' => array(), 'meta' => $meta );
+            }
+
+            $meta['file_size'] = (int) @filesize( $file );
+            $fh = @fopen( $file, 'rb' );
+            if ( ! $fh ) {
+                return array( 'ok' => true, 'file' => $file, 'lines' => array(), 'meta' => array_merge( $meta, array( 'warning' => 'cannot_open' ) ) );
+            }
+
+            $chunk_size = 8192;
+            $pos = (int) $meta['file_size'];
+            $buffer = '';
+            $lines = array();
+
+            while ( $pos > 0 && count( $lines ) <= $max_lines ) {
+                $read = min( $chunk_size, $pos );
+                $pos -= $read;
+
+                if ( @fseek( $fh, $pos, SEEK_SET ) !== 0 ) {
+                    break;
+                }
+
+                $chunk = @fread( $fh, $read );
+                if ( ! is_string( $chunk ) || $chunk === '' ) {
+                    break;
+                }
+
+                $meta['bytes_read'] += strlen( $chunk );
+                $buffer = $chunk . $buffer;
+
+                $parts = preg_split( "/\r\n|\n|\r/", $buffer );
+                if ( ! is_array( $parts ) || count( $parts ) <= 1 ) {
+                    continue;
+                }
+
+                $buffer = array_shift( $parts );
+                foreach ( array_reverse( $parts ) as $line ) {
+                    $trim = trim( (string) $line );
+                    if ( $trim === '' ) {
+                        continue;
+                    }
+                    $lines[] = $trim;
+                    if ( count( $lines ) >= $max_lines ) {
+                        break 2;
+                    }
+                }
+            }
+
+            if ( $buffer !== '' && count( $lines ) < $max_lines ) {
+                $trim = trim( $buffer );
+                if ( $trim !== '' ) {
+                    $lines[] = $trim;
+                }
+            }
+
+            @fclose( $fh );
+
+            if ( $meta['bytes_read'] < $meta['file_size'] ) {
+                $meta['truncated'] = true;
+            }
+
+            $lines = array_reverse( array_slice( $lines, 0, $max_lines ) );
+            $meta['lines_found'] = (int) count( $lines );
+            return array( 'ok' => true, 'file' => $file, 'lines' => $lines, 'meta' => $meta );
+        } catch ( \Throwable $e ) {
+            return array( 'ok' => true, 'file' => isset( $file ) ? (string) $file : '', 'lines' => array(), 'meta' => array_merge( $meta, array( 'warning' => 'exception' ) ), 'error' => $e->getMessage() );
+        }
+    }
+
+
 	/**
 	 * Return an excerpt of the trace log filtered by trace ids.
 	 *

@@ -241,6 +241,16 @@ class APAI_Brain_REST {
 
             register_rest_route(
                 $ns,
+                '/trace/log',
+                array(
+                    'methods'             => 'GET',
+                    'callback'            => array( __CLASS__, 'handle_trace_log' ),
+                    'permission_callback' => array( __CLASS__, 'permission_check_admin' ),
+                )
+            );
+
+            register_rest_route(
+                $ns,
                 '/qa/run',
                 array(
                     'methods'             => 'GET',
@@ -253,6 +263,10 @@ class APAI_Brain_REST {
 
     public static function permission_check() {
         return current_user_can( 'manage_woocommerce' ) || current_user_can( 'manage_options' );
+    }
+
+    public static function permission_check_admin() {
+        return current_user_can( 'manage_options' );
     }
 
     private static function get_scope_from_request( WP_REST_Request $request ) {
@@ -1188,6 +1202,43 @@ if ( isset( $action['type'] ) && (string) $action['type'] === 'update_product' &
         if ( $payload === null ) {
             $events = class_exists( 'APAI_Brain_Trace' ) ? APAI_Brain_Trace::buffer_get( $trace_id ) : array();
             $payload = array( 'ok' => true, 'trace_id' => $trace_id, 'mode' => 'buffer', 'meta' => array(), 'events' => $events );
+        }
+
+        return self::respond( $payload, $tid );
+    }
+
+
+    public static function handle_trace_log( WP_REST_Request $request ) {
+        $tid = self::new_trace_id();
+
+        if ( ! class_exists( 'APAI_Brain_Trace' ) || ! method_exists( 'APAI_Brain_Trace', 'full_trace_log_lines' ) ) {
+            return self::respond( array( 'ok' => false, 'trace_id' => $tid, 'message' => 'Trace log no disponible.' ), $tid, 503 );
+        }
+
+        $max_lines = absint( $request->get_param( 'max_lines' ) );
+        if ( $max_lines <= 0 ) {
+            $max_lines = 2000;
+        }
+        if ( $max_lines > 5000 ) {
+            $max_lines = 5000;
+        }
+
+        $out = APAI_Brain_Trace::full_trace_log_lines( $max_lines );
+        if ( ! is_array( $out ) ) {
+            $out = array( 'ok' => true, 'file' => '', 'lines' => array(), 'meta' => array( 'warning' => 'bad_response' ) );
+        }
+
+        $payload = array(
+            'ok' => true,
+            'trace_id' => $tid,
+            'trace_file' => isset( $out['file'] ) ? (string) $out['file'] : '',
+            'meta' => isset( $out['meta'] ) && is_array( $out['meta'] ) ? $out['meta'] : array(),
+            'lines' => isset( $out['lines'] ) && is_array( $out['lines'] ) ? $out['lines'] : array(),
+        );
+
+        if ( isset( $out['error'] ) ) {
+            $payload['message'] = 'No se pudo leer trace.log en este momento.';
+            $payload['meta']['error'] = (string) $out['error'];
         }
 
         return self::respond( $payload, $tid );

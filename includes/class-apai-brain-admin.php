@@ -88,6 +88,7 @@ class APAI_Brain_Admin {
                 'product_variations_url'=> esc_url_raw( rest_url( 'apai-brain/v1/products/variations' ) ),
                 'variations_apply_url'  => esc_url_raw( rest_url( 'apai-brain/v1/variations/apply' ) ),
                 'trace_excerpt_url'    => esc_url_raw( rest_url( 'apai-brain/v1/trace/excerpt' ) ),
+                'trace_log_url'        => esc_url_raw( rest_url( 'apai-brain/v1/trace/log' ) ),
                 // GOLDEN RULE: Confirm only via button -> goes to Brain /confirm.
                 // Brain validates pending + executes deterministically via Agent server-side.
                 'execute_url'          => esc_url_raw( rest_url( 'apai-brain/v1/confirm' ) ),
