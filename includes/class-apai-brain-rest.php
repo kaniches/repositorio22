@@ -1215,9 +1215,12 @@ if ( isset( $action['type'] ) && (string) $action['type'] === 'update_product' &
             return self::respond( array( 'ok' => false, 'trace_id' => $tid, 'message' => 'Trace log no disponible.' ), $tid, 503 );
         }
 
-        $max_lines = intval( $request->get_param( 'max_lines' ) );
+        $max_lines = absint( $request->get_param( 'max_lines' ) );
         if ( $max_lines <= 0 ) {
-            $max_lines = 10000;
+            $max_lines = 2000;
+        }
+        if ( $max_lines > 5000 ) {
+            $max_lines = 5000;
         }
 
         $out = APAI_Brain_Trace::full_trace_log_lines( $max_lines );
