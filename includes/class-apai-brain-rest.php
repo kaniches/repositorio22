@@ -241,6 +241,16 @@ class APAI_Brain_REST {
 
             register_rest_route(
                 $ns,
+                '/trace/log',
+                array(
+                    'methods'             => 'GET',
+                    'callback'            => array( __CLASS__, 'handle_trace_log' ),
+                    'permission_callback' => array( __CLASS__, 'permission_check' ),
+                )
+            );
+
+            register_rest_route(
+                $ns,
                 '/qa/run',
                 array(
                     'methods'             => 'GET',
@@ -1188,6 +1198,40 @@ if ( isset( $action['type'] ) && (string) $action['type'] === 'update_product' &
         if ( $payload === null ) {
             $events = class_exists( 'APAI_Brain_Trace' ) ? APAI_Brain_Trace::buffer_get( $trace_id ) : array();
             $payload = array( 'ok' => true, 'trace_id' => $trace_id, 'mode' => 'buffer', 'meta' => array(), 'events' => $events );
+        }
+
+        return self::respond( $payload, $tid );
+    }
+
+
+    public static function handle_trace_log( WP_REST_Request $request ) {
+        $tid = self::new_trace_id();
+
+        if ( ! class_exists( 'APAI_Brain_Trace' ) || ! method_exists( 'APAI_Brain_Trace', 'full_trace_log_lines' ) ) {
+            return self::respond( array( 'ok' => false, 'trace_id' => $tid, 'message' => 'Trace log no disponible.' ), $tid, 503 );
+        }
+
+        $max_lines = intval( $request->get_param( 'max_lines' ) );
+        if ( $max_lines <= 0 ) {
+            $max_lines = 10000;
+        }
+
+        $out = APAI_Brain_Trace::full_trace_log_lines( $max_lines );
+        if ( ! is_array( $out ) ) {
+            $out = array( 'ok' => false, 'file' => '', 'lines' => array(), 'meta' => array(), 'error' => 'bad_response' );
+        }
+
+        $payload = array(
+            'ok' => ! empty( $out['ok'] ),
+            'trace_id' => $tid,
+            'trace_file' => isset( $out['file'] ) ? (string) $out['file'] : '',
+            'meta' => isset( $out['meta'] ) && is_array( $out['meta'] ) ? $out['meta'] : array(),
+            'lines' => isset( $out['lines'] ) && is_array( $out['lines'] ) ? $out['lines'] : array(),
+        );
+
+        if ( empty( $out['ok'] ) ) {
+            $payload['error'] = isset( $out['error'] ) ? (string) $out['error'] : 'trace_read_error';
+            return self::respond( $payload, $tid, 500 );
         }
 
         return self::respond( $payload, $tid );

@@ -9,7 +9,7 @@
 // - Pending action cards
 // - Selector cards
 // - Debug FULL block (if present)
-// - Tracer excerpt for THIS conversation (trace IDs captured in JS)
+// - Debug existing block + TRACE completo (wp-content/uploads/autoproduct-ai/trace.log)
 //
 // ============================================================
 
@@ -166,9 +166,10 @@
                 credentials: 'same-origin'
             });
             const json = await res.json();
-            if(!json || json.ok !== true || !json.data) return null;
-            const events = Array.isArray(json.data.events) ? json.data.events : [];
-            const meta = json.data.meta || null;
+            const payload = (json && json.data && typeof json.data === 'object') ? json.data : json;
+            if(!payload || payload.ok !== true) return null;
+            const events = Array.isArray(payload.events) ? payload.events : [];
+            const meta = payload.meta || null;
             return { traceId, events, meta };
         }catch(e){
             return null;
@@ -195,16 +196,43 @@
         return '=== TRACER (esta conversación) ===\n' + chunks.join('\n');
     }
 
+
+    async function getFullTraceLogText(){
+        try{
+            if(!window.APAI_AGENT_DATA || !window.APAI_AGENT_DATA.trace_log_url) return '';
+
+            const url = window.APAI_AGENT_DATA.trace_log_url + '?max_lines=100000';
+            const res = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'X-WP-Nonce': window.APAI_AGENT_DATA.nonce || '',
+                },
+                credentials: 'same-origin'
+            });
+
+            const json = await res.json();
+            const payload = (json && json.data && typeof json.data === 'object') ? json.data : json;
+            if(!payload || payload.ok !== true) return '';
+            const lines = Array.isArray(payload.lines) ? payload.lines : [];
+            if(!lines.length) return '--- TRACE ---\n(sin datos en trace.log)';
+            return '--- TRACE ---\n' + lines.join('\n');
+        }catch(e){
+            return '';
+        }
+    }
+
     async function copyAll(){
         const transcript = buildTranscriptText();
         const debug = getDebugFullText();
         const tracer = await getTracerText(transcript, debug);
+        const fullTrace = await getFullTraceLogText();
 
         const parts = [];
         parts.push('=== AUTOPRODUCT AI CHAT ===');
         if(transcript) parts.push(transcript);
         if(debug) parts.push(debug);
         if(tracer) parts.push(tracer);
+        if(fullTrace) parts.push(fullTrace);
 
         const text = parts.join('\n\n');
         if(!text.trim()) return false;

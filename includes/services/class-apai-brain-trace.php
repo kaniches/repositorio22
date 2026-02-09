@@ -218,6 +218,66 @@ class APAI_Brain_Trace {
         }
     }
 
+
+    /**
+     * Return the full persisted trace log as lines (best-effort).
+     *
+     * @param int $max_lines Hard cap of lines returned from the end of the file.
+     * @return array{ok:bool, file:string, lines:array, meta:array, error?:string}
+     */
+    public static function full_trace_log_lines( $max_lines = 10000 ) {
+        $max_lines = max( 1, (int) $max_lines );
+        $max_lines = min( 200000, $max_lines );
+
+        $meta = array(
+            'mode' => 'full_log',
+            'max_lines' => $max_lines,
+            'truncated' => false,
+            'file_size' => 0,
+            'lines_found' => 0,
+        );
+
+        try {
+            list( $dir, $file ) = self::log_path();
+            if ( $file === '' ) {
+                return array( 'ok' => false, 'file' => '', 'lines' => array(), 'meta' => $meta, 'error' => 'path_unavailable' );
+            }
+            if ( ! file_exists( $file ) ) {
+                return array( 'ok' => true, 'file' => $file, 'lines' => array(), 'meta' => $meta );
+            }
+
+            $meta['file_size'] = (int) @filesize( $file );
+            $raw = @file_get_contents( $file );
+            if ( ! is_string( $raw ) ) {
+                return array( 'ok' => false, 'file' => $file, 'lines' => array(), 'meta' => $meta, 'error' => 'cannot_read' );
+            }
+
+            $parts = preg_split( "/\r\n|\n|\r/", $raw );
+            if ( ! is_array( $parts ) ) {
+                $parts = array();
+            }
+
+            $lines = array();
+            foreach ( $parts as $line ) {
+                $trim = trim( (string) $line );
+                if ( $trim === '' ) {
+                    continue;
+                }
+                $lines[] = $trim;
+            }
+
+            if ( count( $lines ) > $max_lines ) {
+                $lines = array_slice( $lines, -$max_lines );
+                $meta['truncated'] = true;
+            }
+
+            $meta['lines_found'] = (int) count( $lines );
+            return array( 'ok' => true, 'file' => $file, 'lines' => $lines, 'meta' => $meta );
+        } catch ( \Throwable $e ) {
+            return array( 'ok' => false, 'file' => isset( $file ) ? (string) $file : '', 'lines' => array(), 'meta' => $meta, 'error' => $e->getMessage() );
+        }
+    }
+
 	/**
 	 * Return an excerpt of the trace log filtered by trace ids.
 	 *
