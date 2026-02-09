@@ -166,10 +166,11 @@
                 credentials: 'same-origin'
             });
             const json = await res.json();
-            const payload = (json && json.data && typeof json.data === 'object') ? json.data : json;
-            if(!payload || payload.ok !== true) return null;
+            if(!json || json.ok !== true) return null;
+
+            const payload = (json.data && typeof json.data === 'object') ? json.data : json;
             const events = Array.isArray(payload.events) ? payload.events : [];
-            const meta = payload.meta || null;
+            const meta = (payload.meta && typeof payload.meta === 'object') ? payload.meta : null;
             return { traceId, events, meta };
         }catch(e){
             return null;
@@ -201,7 +202,7 @@
         try{
             if(!window.APAI_AGENT_DATA || !window.APAI_AGENT_DATA.trace_log_url) return '';
 
-            const url = window.APAI_AGENT_DATA.trace_log_url + '?max_lines=100000';
+            const url = window.APAI_AGENT_DATA.trace_log_url + '?max_lines=2000';
             const res = await fetch(url, {
                 method: 'GET',
                 headers: {
@@ -211,11 +212,11 @@
             });
 
             const json = await res.json();
-            const payload = (json && json.data && typeof json.data === 'object') ? json.data : json;
-            if(!payload || payload.ok !== true) return '';
+            if(!json || json.ok !== true) return '';
+            const payload = (json.data && typeof json.data === 'object') ? json.data : json;
             const lines = Array.isArray(payload.lines) ? payload.lines : [];
-            if(!lines.length) return '--- TRACE ---\n(sin datos en trace.log)';
-            return '--- TRACE ---\n' + lines.join('\n');
+            if(!lines.length) return '--- TRACE (TAIL trace.log) ---\n(sin datos en tail)';
+            return '--- TRACE (TAIL trace.log) ---\n' + lines.join('\n');
         }catch(e){
             return '';
         }
