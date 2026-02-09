@@ -245,7 +245,7 @@ class APAI_Brain_REST {
                 array(
                     'methods'             => 'GET',
                     'callback'            => array( __CLASS__, 'handle_trace_log' ),
-                    'permission_callback' => array( __CLASS__, 'permission_check' ),
+                    'permission_callback' => array( __CLASS__, 'permission_check_admin' ),
                 )
             );
 
@@ -263,6 +263,10 @@ class APAI_Brain_REST {
 
     public static function permission_check() {
         return current_user_can( 'manage_woocommerce' ) || current_user_can( 'manage_options' );
+    }
+
+    public static function permission_check_admin() {
+        return current_user_can( 'manage_options' );
     }
 
     private static function get_scope_from_request( WP_REST_Request $request ) {
@@ -1218,20 +1222,20 @@ if ( isset( $action['type'] ) && (string) $action['type'] === 'update_product' &
 
         $out = APAI_Brain_Trace::full_trace_log_lines( $max_lines );
         if ( ! is_array( $out ) ) {
-            $out = array( 'ok' => false, 'file' => '', 'lines' => array(), 'meta' => array(), 'error' => 'bad_response' );
+            $out = array( 'ok' => true, 'file' => '', 'lines' => array(), 'meta' => array( 'warning' => 'bad_response' ) );
         }
 
         $payload = array(
-            'ok' => ! empty( $out['ok'] ),
+            'ok' => true,
             'trace_id' => $tid,
             'trace_file' => isset( $out['file'] ) ? (string) $out['file'] : '',
             'meta' => isset( $out['meta'] ) && is_array( $out['meta'] ) ? $out['meta'] : array(),
             'lines' => isset( $out['lines'] ) && is_array( $out['lines'] ) ? $out['lines'] : array(),
         );
 
-        if ( empty( $out['ok'] ) ) {
-            $payload['error'] = isset( $out['error'] ) ? (string) $out['error'] : 'trace_read_error';
-            return self::respond( $payload, $tid, 500 );
+        if ( isset( $out['error'] ) ) {
+            $payload['message'] = 'No se pudo leer trace.log en este momento.';
+            $payload['meta']['error'] = (string) $out['error'];
         }
 
         return self::respond( $payload, $tid );

@@ -240,7 +240,7 @@ class APAI_Brain_Trace {
         try {
             list( $dir, $file ) = self::log_path();
             if ( $file === '' ) {
-                return array( 'ok' => false, 'file' => '', 'lines' => array(), 'meta' => $meta, 'error' => 'path_unavailable' );
+                return array( 'ok' => true, 'file' => '', 'lines' => array(), 'meta' => array_merge( $meta, array( 'warning' => 'path_unavailable' ) ) );
             }
             if ( ! file_exists( $file ) ) {
                 return array( 'ok' => true, 'file' => $file, 'lines' => array(), 'meta' => $meta );
@@ -249,7 +249,7 @@ class APAI_Brain_Trace {
             $meta['file_size'] = (int) @filesize( $file );
             $raw = @file_get_contents( $file );
             if ( ! is_string( $raw ) ) {
-                return array( 'ok' => false, 'file' => $file, 'lines' => array(), 'meta' => $meta, 'error' => 'cannot_read' );
+                return array( 'ok' => true, 'file' => $file, 'lines' => array(), 'meta' => array_merge( $meta, array( 'warning' => 'cannot_read' ) ) );
             }
 
             $parts = preg_split( "/\r\n|\n|\r/", $raw );
@@ -274,7 +274,7 @@ class APAI_Brain_Trace {
             $meta['lines_found'] = (int) count( $lines );
             return array( 'ok' => true, 'file' => $file, 'lines' => $lines, 'meta' => $meta );
         } catch ( \Throwable $e ) {
-            return array( 'ok' => false, 'file' => isset( $file ) ? (string) $file : '', 'lines' => array(), 'meta' => $meta, 'error' => $e->getMessage() );
+            return array( 'ok' => true, 'file' => isset( $file ) ? (string) $file : '', 'lines' => array(), 'meta' => array_merge( $meta, array( 'warning' => 'exception' ) ), 'error' => $e->getMessage() );
         }
     }
 
