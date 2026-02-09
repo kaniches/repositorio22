@@ -1,0 +1,12 @@
+#apai-brain-app{display:flex;gap:16px;align-items:flex-start}
+.apai-brain-chat{flex:1;min-width:520px}
+.apai-brain-messages{background:#fff;border:1px solid #dcdcde;border-radius:8px;padding:12px;min-height:420px;max-height:70vh;overflow:auto}
+.apai-brain-msg{margin:10px 0;padding:10px 12px;border-radius:10px;max-width:80%;white-space:pre-wrap}
+.apai-brain-msg.user{margin-left:auto;background:#eef6ff;border:1px solid #d6e9ff}
+.apai-brain-msg.assistant{margin-right:auto;background:#f7f7f7;border:1px solid #e5e5e5}
+.apai-brain-composer{display:flex;gap:8px;margin-top:10px}
+.apai-brain-composer textarea{flex:1}
+.apai-brain-side{width:360px;min-width:300px}
+.apai-brain-pending{background:#fff;border:1px solid #dcdcde;border-radius:8px;padding:12px}
+.apai-brain-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.apai-brain-muted{opacity:.8;font-size:12px}
